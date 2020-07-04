@@ -1,5 +1,7 @@
 import copy
 import numpy as np
+from functools import partial
+from multiprocessing.dummy import Pool as ThreadPool
 
 class RandomForest:
     '''Random Forest Classifier.
@@ -23,7 +25,7 @@ class RandomForest:
         self.n_estimator = n_estimator
         self._estimators = [copy.deepcopy(self.base_learner) for _ in range(self.n_estimator)]
 
-    def _get_bootstrap_dataset(self, X, y):
+    def _get_bootstrap_dataset(self, X, y, i):
         """Create a bootstrap dataset for X.
 
         Args:
@@ -40,7 +42,8 @@ class RandomForest:
         X_arr, y_arr=np.array(X), np.array(y)
         idx=np.random.choice(X_arr.shape[0], X_arr.shape[0], replace=True)
         X_bootstrap, y_bootstrap = X.iloc[idx, :], y.iloc[idx]
-        return X_bootstrap, y_bootstrap
+        self._estimators[i].fit(X_bootstrap, y_bootstrap)
+        #return X_bootstrap, y_bootstrap
         # end answer
 
     def fit(self, X, y):
@@ -53,9 +56,14 @@ class RandomForest:
         # YOUR CODE HERE
         # begin answer
         self.labels=list(set(y))
-        for i in range(self.n_estimator):
-            X_bootstrap, y_bootstrap = self._get_bootstrap_dataset(X, y)
-            self._estimators[i].fit(X_bootstrap, y_bootstrap)
+        part_bootstrap=partial(self._get_bootstrap_dataset, X, y)
+        pool=ThreadPool(self.n_estimator)
+        pool.map(part_bootstrap, list(range(self.n_estimator)))
+        pool.close()
+        pool.join()
+        #for i in range(self.n_estimator):
+        #    X_bootstrap, y_bootstrap = self._get_bootstrap_dataset(X, y)
+        #    self._estimators[i].fit(X_bootstrap, y_bootstrap)
         # end answer
         return self
 
